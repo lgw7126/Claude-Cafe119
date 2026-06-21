@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1b1f2a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="1초 커닝페이퍼">
+  <title>☕ 1초 레시피 & 비상 매뉴얼</title>
+
+  <!-- ============================================================
+       오프라인 앱(홈 화면에 추가)용 manifest - 파일 내부에 data URI로 내장
+  ============================================================ -->
+  <link id="manifest-holder" rel="manifest">
+
+  <style>
+    /* ===== 기본 리셋 ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg: #1b1f2a;
+      --panel: #252a38;
+      --panel-2: #2e3447;
+      --line: #3a4055;
+      --text: #f2f4f8;
+      --muted: #9aa3bb;
+      --accent: #ffd34d;
+      --sos: #ff6b6b;
+      --recipe: #5ad1a8;
+      --blue: #6aa8ff;
+      --highlight-bg: rgba(255, 211, 77, 0.18);
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic",
+                   "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 18px;            /* 가독성: 최소 18px 유지 */
+      line-height: 1.55;
+      -webkit-text-size-adjust: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      padding: 16px;
+    }
+
+    /* ===== 헤더 ===== */
+    header {
+      flex: 0 0 auto;
+      padding-bottom: 12px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    header .title h1 { font-size: 1.35rem; letter-spacing: -0.02em; }
+    header .title p { color: var(--muted); font-size: 0.92rem; margin-top: 4px; }
+
+    .mode-btn {
+      flex: 0 0 auto;
+      border: 1.5px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .mode-btn:active { background: var(--panel-2); }
+    .mode-btn.admin-on { border-color: var(--accent); color: var(--accent); }
+
+    /* ===== 검색창 ===== */
+    .search-wrap {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel);
+      border: 2px solid var(--line);
+      border-radius: 16px;
+      padding: 6px 6px 6px 16px;
+      margin-bottom: 14px;
+    }
+    .search-wrap:focus-within { border-color: var(--accent); }
+    .search-icon { font-size: 1.4rem; flex: 0 0 auto; }
+
+    #search {
+      flex: 1 1 auto;
+      width: 100%;
+      border: none; outline: none; background: transparent;
+      color: var(--text);
+      font-size: 1.25rem;
+      padding: 12px 4px;
+      font-family: inherit;
+    }
+    #search::placeholder { color: var(--muted); }
+
+    #clearBtn {
+      flex: 0 0 auto;
+      border: none;
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 1.2rem;
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: none;
+      align-items: center; justify-content: center;
+    }
+    #clearBtn:active { background: var(--sos); }
+
+    /* ===== 빠른 필터 칩 ===== */
+    .chips {
+      flex: 0 0 auto;
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .chip {
+      flex: 0 0 auto;
+      border: 1.5px solid var(--line);
+      background: var(--panel);
+      color: var(--muted);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .chip.active {
+      border-color: var(--accent);
+      color: var(--bg);
+      background: var(--accent);
+      font-weight: 700;
+    }
+
+    /* ===== 결과/스크롤 영역 ===== */
+    .scroll {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding-bottom: 24px;
+      -webkit-overflow-scrolling: touch;
+    }
+    #results {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-content: start;
+    }
+    @media (min-width: 720px) {
+      #results { grid-template-columns: 1fr 1fr; }
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1.5px solid var(--line);
+      border-left: 6px solid var(--recipe);
+      border-radius: 14px;
+      padding: 16px 18px;
+    }
+    .card.sos { border-left-color: var(--sos); }
+
+    .card .tag {
+      display: inline-block;
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em;
+      padding: 3px 10px; border-radius: 999px; margin-bottom: 8px;
+    }
+    .card.recipe .tag { background: rgba(90,209,168,0.15); color: var(--recipe); }
+    .card.sos .tag    { background: rgba(255,107,107,0.15); color: var(--sos); }
+
+    .card h2 { font-size: 1.25rem; margin-bottom: 10px; letter-spacing: -0.01em; }
+    .card .content {
+      font-size: 1.05rem; color: #dfe3ee;
+      white-space: pre-wrap; word-break: break-word;
+    }
+
+    .hl-loc { background: var(--highlight-bg); color: var(--accent); font-weight: 800; padding: 0 4px; border-radius: 4px; }
+    .hl-tel { color: var(--sos); font-weight: 800; text-decoration: underline; }
+    .hl-step { color: var(--accent); font-weight: 800; }
+
+    .empty {
+      grid-column: 1 / -1;
+      text-align: center; color: var(--muted);
+      padding: 48px 16px; font-size: 1.05rem; line-height: 1.8;
+    }
+    .empty .big { font-size: 2.4rem; display: block; margin-bottom: 10px; }
+
+    /* ============================================================
+       관리 모드 (사장님 전용)
+    ============================================================ */
+    .hidden { display: none !important; }
+
+    /* PIN 잠금 화면 */
+    .pin-gate { max-width: 360px; margin: 24px auto 0; text-align: center; }
+    .pin-gate .lock { font-size: 3rem; }
+    .pin-gate h2 { font-size: 1.3rem; margin: 10px 0 6px; }
+    .pin-gate p { color: var(--muted); font-size: 0.92rem; margin-bottom: 18px; line-height: 1.6; }
+    .pin-gate .warn { color: var(--muted); font-size: 0.82rem; margin-top: 16px; }
+    #pinInput {
+      width: 100%;
+      text-align: center;
+      letter-spacing: 0.5em;
+      font-size: 1.8rem;
+      padding: 14px;
+      border-radius: 14px;
+      border: 2px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      font-family: inherit;
+    }
+    #pinInput:focus { outline: none; border-color: var(--accent); }
+    .pin-err { color: var(--sos); font-size: 0.9rem; min-height: 1.3em; margin-top: 10px; }
+
+    /* 공통 버튼 */
+    .btn {
+      border: none; border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 1.05rem; font-weight: 700; font-family: inherit;
+      cursor: pointer;
+      color: var(--bg);
+    }
+    .btn-primary { background: var(--accent); }
+    .btn-block { width: 100%; }
+    .btn-ghost { background: var(--panel-2); color: var(--text); font-weight: 600; }
+    .btn-danger { background: var(--sos); color: #fff; }
+    .btn:active { filter: brightness(0.92); }
+
+    /* 관리 패널 */
+    .admin-section {
+      background: var(--panel);
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+    .admin-section > h3 { font-size: 1.1rem; margin-bottom: 12px; }
+
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 0.9rem; color: var(--muted); margin-bottom: 6px; }
+    .field label .req { color: var(--sos); }
+    .field input[type=text], .field textarea, .field select {
+      width: 100%;
+      background: var(--panel-2);
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 1.05rem;
+      font-family: inherit;
+      padding: 12px;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--accent); }
+    .field textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
+    .field .hint { font-size: 0.8rem; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+
+    .type-toggle { display: flex; gap: 8px; }
+    .type-toggle button {
+      flex: 1;
+      border: 1.5px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+      padding: 12px; border-radius: 10px;
+      font-size: 1rem; font-family: inherit; cursor: pointer;
+    }
+    .type-toggle button.sel-recipe { border-color: var(--recipe); color: var(--recipe); background: rgba(90,209,168,0.12); font-weight: 700; }
+    .type-toggle button.sel-sos    { border-color: var(--sos); color: var(--sos); background: rgba(255,107,107,0.12); font-weight: 700; }
+
+    .form-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .form-actions .btn { flex: 1; }
+
+    /* 관리용 항목 목록 */
+    .admin-list { display: flex; flex-direction: column; gap: 10px; }
+    .admin-item {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--recipe);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .admin-item.sos { border-left-color: var(--sos); }
+    .admin-item .ai-main { flex: 1 1 auto; min-width: 0; }
+    .admin-item .ai-title { font-size: 1.05rem; font-weight: 700; }
+    .admin-item .ai-sub { font-size: 0.82rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .admin-item .ai-btns { flex: 0 0 auto; display: flex; gap: 6px; }
+    .icon-btn {
+      border: none; border-radius: 9px;
+      width: 42px; height: 42px;
+      font-size: 1.1rem; cursor: pointer;
+      background: var(--panel); color: var(--text);
+    }
+    .icon-btn.del:active { background: var(--sos); }
+    .icon-btn.edit:active { background: var(--accent); color: var(--bg); }
+
+    .backup-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .backup-row .btn { flex: 1 1 40%; }
+    .note { font-size: 0.82rem; color: var(--muted); line-height: 1.6; margin-top: 10px; }
+
+    /* 토스트 */
+    #toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
+      background: #000; color: #fff;
+      padding: 12px 20px; border-radius: 999px;
+      font-size: 0.95rem; opacity: 0; pointer-events: none;
+      transition: opacity .2s, transform .2s; z-index: 50;
+      max-width: 90%;
+    }
+    #toast.show { opacity: 0.95; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">
+        <h1>☕ 1초 레시피 &amp; 비상 매뉴얼</h1>
+        <p id="subtitle">초성으로 검색하세요. 예) <b>ㅂㄴㄹ</b>(바닐라라떼), <b>ㅇㅅㅈ</b>(영수증)</p>
+      </div>
+      <button id="modeBtn" class="mode-btn" type="button">⚙️ 관리</button>
+    </header>
+
+    <!-- ================= 검색 화면 (알바생용) ================= -->
+    <div id="searchView">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input id="search" type="text" inputmode="text" autocomplete="off"
+               autocapitalize="off" spellcheck="false"
+               placeholder="메뉴/기기 이름 또는 초성 입력…">
+        <button id="clearBtn" aria-label="검색 초기화" title="초기화">❌</button>
+      </div>
+
+      <div class="chips" id="chips">
+        <button class="chip active" data-filter="all">전체</button>
+        <button class="chip" data-filter="recipe">☕ 레시피</button>
+        <button class="chip" data-filter="sos">🚨 비상매뉴얼</button>
+      </div>
+
+      <div class="scroll"><div id="results"></div></div>
+    </div>
+
+    <!-- ================= 관리 화면 (사장님용) ================= -->
+    <div id="adminView" class="hidden">
+
+      <!-- PIN 잠금 -->
+      <div id="pinGate" class="pin-gate">
+        <div class="lock">🔒</div>
+        <h2>사장님 관리 모드</h2>
+        <p>관리(추가·수정·삭제)는 PIN을 입력해야 합니다.<br>처음이라면 기본 PIN <b>0000</b> 을 입력하세요.</p>
+        <input id="pinInput" type="password" inputmode="numeric" maxlength="4"
+               autocomplete="off" placeholder="••••">
+        <div class="pin-err" id="pinErr"></div>
+        <button class="btn btn-primary btn-block" id="pinSubmit" type="button">잠금 해제</button>
+        <p class="warn">⚠️ 이 PIN은 알바생 실수를 막기 위한 잠금턱이며,<br>완벽한 보안은 아닙니다(데이터는 이 기기에 저장됩니다).</p>
+        <p class="warn" style="margin-top:6px;">버전 <b>v1.1</b> · 이 글자가 보이면 최신 파일입니다.</p>
+      </div>
+
+      <!-- 관리 패널 -->
+      <div id="adminPanel" class="scroll hidden">
+
+        <!-- 추가/수정 폼 -->
+        <div class="admin-section">
+          <h3 id="formTitle">➕ 새 항목 추가</h3>
+          <div class="field">
+            <label>종류 <span class="req">*</span></label>
+            <div class="type-toggle" id="typeToggle">
+              <button type="button" data-type="recipe">☕ 레시피</button>
+              <button type="button" data-type="sos">🚨 비상매뉴얼</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="fTitle">제목 <span class="req">*</span></label>
+            <input id="fTitle" type="text" placeholder="예) 아이스 바닐라 라떼">
+          </div>
+          <div class="field">
+            <label for="fContent">내용 <span class="req">*</span></label>
+            <textarea id="fContent" placeholder="줄바꿈은 그냥 엔터로 하세요.&#10;예)&#10;1. 16oz 얼음컵 준비&#10;2. 바닐라 시럽 3펌프 [오른쪽 하부장]"></textarea>
+            <div class="hint">💡 <b>[대괄호]</b> 안 글씨는 노란색으로 강조돼요(재료 위치 등). 전화번호(02-123-4567)는 자동으로 빨갛게 표시됩니다.</div>
+          </div>
+          <div class="field">
+            <label for="fAlias">검색 별칭 (선택)</label>
+            <input id="fAlias" type="text" placeholder="예) 아아 / 바라라  (쉼표로 여러 개)">
+            <div class="hint">제목 말고도 검색되게 하고 싶은 단어. 입력한 단어의 초성으로도 검색됩니다.</div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-ghost" id="formCancel" type="button">취소</button>
+            <button class="btn btn-primary" id="formSave" type="button">저장</button>
+          </div>
+        </div>
+
+        <!-- 등록 목록 -->
+        <div class="admin-section">
+          <h3>📋 등록된 항목 (<span id="itemCount">0</span>개)</h3>
+          <div class="admin-list" id="adminList"></div>
+        </div>
+
+        <!-- 백업 / 기타 -->
+        <div class="admin-section">
+          <h3>💾 백업 &amp; 관리</h3>
+          <div class="backup-row">
+            <button class="btn btn-ghost" id="exportBtn" type="button">⬇️ 백업 내보내기</button>
+            <button class="btn btn-ghost" id="importBtn" type="button">⬆️ 백업 불러오기</button>
+            <button class="btn btn-ghost" id="pinChangeBtn" type="button">🔑 PIN 변경</button>
+            <button class="btn btn-danger" id="resetBtn" type="button">♻️ 기본값으로 초기화</button>
+          </div>
+          <input id="importFile" type="file" accept="application/json,.json" class="hidden">
+          <p class="note">
+            • <b>백업 내보내기</b>: 지금 데이터를 파일로 저장합니다. 다른 기기(태블릿 등)로 옮기거나 보관용으로 쓰세요.<br>
+            • <b>백업 불러오기</b>: 저장해 둔 백업 파일을 선택하면 현재 데이터가 그걸로 교체됩니다.<br>
+            • 데이터는 이 브라우저에 저장됩니다. 방문기록/캐시를 지우면 사라질 수 있으니 가끔 백업하세요.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+
+  <!-- =================================================================
+       💡 첫 실행 시 채워지는 기본 샘플 데이터
+       (앱에서 직접 수정/삭제하면 이후로는 브라우저 저장본이 우선됩니다.
+        '기본값으로 초기화'를 누르면 다시 이 내용으로 돌아갑니다.)
+  ================================================================== -->
+  <script>
+  const DEFAULT_DB = [
+    { type: "recipe", alias: "바라라", title: "아이스 바닐라 라떼",
+      content: "1. 16oz 얼음컵 준비\n2. 바닐라 시럽 3펌프 [오른쪽 하부장]\n3. 에스프레소 2샷\n4. 우유 150ml 붓고 완성" },
+    { type: "recipe", alias: "아아", title: "아메리카노",
+      content: "HOT: 8oz 컵 + 에스프레소 2샷 + 뜨거운 물 200ml\nICE: 16oz 얼음컵 + 에스프레소 2샷 + 찬물 200ml" },
+    { type: "recipe", alias: "카라", title: "카페 라떼",
+      content: "HOT: 데운 우유 250ml + 에스프레소 2샷\nICE: 얼음컵 + 우유 200ml + 에스프레소 2샷\n* 우유 스팀 온도 [65도] 주의" },
+    { type: "recipe", alias: "딸스", title: "딸기 스무디",
+      content: "1. 딸기 베이스 100ml [냉동고 윗칸]\n2. 우유 100ml\n3. 얼음 한 스쿱\n4. 블렌더 30초" },
+    { type: "sos", alias: "", title: "🚨 영수증 프린터 안 나올 때",
+      content: "1. 종이 반질반질한 면이 위로 오게 다시 끼우기\n2. 기기 뒷면 전원 껐다 켜기\n3. 안 되면 포스기 AS 센터: 02-123-4567" },
+    { type: "sos", alias: "", title: "🚨 에스프레소 머신 작동 안 됨",
+      content: "1. 물탱크 수위 확인 [머신 왼쪽]\n2. 포터필터 다시 장착\n3. 보일러 예열 5분 대기\n4. 그래도 안 되면 사장님: 010-1111-2222" },
+    { type: "sos", alias: "", title: "🚨 카드 단말기 / 정전 대처",
+      content: "1. 두꺼비집(분전반) 차단기 ON 확인 [창고 입구]\n2. 단말기 통신선 분리 후 재연결\n3. 현금 결제 우선 안내\n4. 긴급 연락: 010-1111-2222" }
+  ];
+  // ===== 기본 샘플 끝 =====
+
+
+  /* =================================================================
+     동작 코드
+  ================================================================== */
+  const LS_DB  = 'cafeCheatDB';
+  const LS_PIN = 'cafeCheatPIN';
+  const DEFAULT_PIN = '0000';
+
+  // 전역 에러 안전망: 어떤 오류든 조용히 사라지지 않고 화면(토스트)에 표시.
+  window.addEventListener('error', (e) => {
+    try { toast('⚠️ 오류: ' + ((e.error && e.error.message) || e.message || '알 수 없음')); } catch (_) {}
+  });
+
+  // ----- 저장소 (안전 래퍼) -----
+  // file://, 시크릿/프라이빗 모드, 구형 기기 인앱 웹뷰 등에서는 localStorage 접근
+  // 자체가 예외를 던질 수 있다. 그대로 두면 PIN 확인 등에서 조용히 죽으므로 모두 감싼다.
+  let storageOK = true;
+  let memPIN = null;   // 저장이 막힌 환경용 세션 메모리 PIN (그 세션 동안만 유지)
+
+  function safeGet(key) {
+    try { return localStorage.getItem(key); }
+    catch (_) { storageOK = false; return null; }
+  }
+  function safeSet(key, val) {
+    try { localStorage.setItem(key, val); return true; }
+    catch (_) { storageOK = false; return false; }
+  }
+
+  function loadDB() {
+    const raw = safeGet(LS_DB);
+    if (raw) {
+      try { const data = JSON.parse(raw); if (Array.isArray(data)) return data; } catch (_) {}
+    }
+    return JSON.parse(JSON.stringify(DEFAULT_DB)); // 첫 실행/저장불가: 기본값 복사
+  }
+  function saveDB() {
+    if (!safeSet(LS_DB, JSON.stringify(db))) {
+      toast('⚠️ 이 기기엔 저장이 안 돼요. 변경분은 백업 내보내기로 보관하세요.');
+    }
+  }
+  function getPIN() {
+    const stored = safeGet(LS_PIN);
+    if (stored) return stored;        // 저장된 PIN 우선
+    return memPIN || DEFAULT_PIN;     // 저장 불가 환경: 메모리 PIN → 기본 0000
+  }
+  function setPIN(p) {
+    memPIN = p;                       // 항상 메모리에 보관 (세션 동안 적용 보장)
+    if (!safeSet(LS_PIN, p)) {
+      toast('⚠️ PIN이 이 기기에 영구 저장되진 않습니다(이번 세션에만 적용).');
+    }
+  }
+
+  let db = loadDB();
+
+  // ----- 한글 초성 -----
+  const CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ',
+               'ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+  function toChoseong(str) {
+    let out = '';
+    for (const ch of str) {
+      const code = ch.charCodeAt(0);
+      if (code >= 0xAC00 && code <= 0xD7A3) out += CHO[Math.floor((code - 0xAC00) / 588)];
+      else out += ch;
+    }
+    return out;
+  }
+  function isChoseongQuery(q) {
+    const t = q.replace(/\s/g, '');
+    return t.length > 0 && [...t].every(c => CHO.includes(c));
+  }
+  function normalize(s) { return s.toLowerCase().replace(/\s/g, ''); }
+
+  // ----- 본문 포맷 -----
+  function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function formatContent(text) {
+    let html = escapeHtml(text);
+    html = html.replace(/\[([^\]]+)\]/g, '<span class="hl-loc">[$1]</span>');
+    html = html.replace(/(\d{2,4}-\d{3,4}-\d{4})/g, '<span class="hl-tel">$1</span>');
+    html = html.replace(/(^|\n)(\d+\.)/g, '$1<span class="hl-step">$2</span>');
+    return html;
+  }
+
+  // ----- 검색 화면 -----
+  const resultsEl = document.getElementById('results');
+  const searchEl  = document.getElementById('search');
+  const clearBtn  = document.getElementById('clearBtn');
+  const chipsEl   = document.getElementById('chips');
+  let activeFilter = 'all';
+
+  function renderSearch() {
+    const raw = searchEl.value.trim();
+    const q   = normalize(raw);
+    const choMode = isChoseongQuery(raw);
+    clearBtn.style.display = raw ? 'flex' : 'none';
+
+    const items = db.filter(item => {
+      if (activeFilter !== 'all' && item.type !== activeFilter) return false;
+      if (!q) return true;
+      const haystack = normalize((item.alias || '') + ' ' + item.title + ' ' + item.content);
+      if (choMode) return toChoseong(haystack).includes(q);
+      return haystack.includes(q) || toChoseong(haystack).includes(toChoseong(q));
+    });
+
+    if (items.length === 0) {
+      resultsEl.innerHTML =
+        '<div class="empty"><span class="big">🔍</span>' +
+        (db.length === 0
+          ? '아직 등록된 항목이 없어요.<br>우측 상단 <b>⚙️ 관리</b>에서 추가하세요.'
+          : '검색 결과가 없어요.<br>초성(예: <b>ㅂㄴㄹ</b>) 또는 메뉴 이름으로 다시 검색해 보세요.') +
+        '</div>';
+      return;
+    }
+    resultsEl.innerHTML = items.map(item => {
+      const cls = item.type === 'sos' ? 'sos' : 'recipe';
+      const tag = item.type === 'sos' ? '🚨 비상' : '☕ 레시피';
+      return '<div class="card ' + cls + '">' +
+               '<span class="tag">' + tag + '</span>' +
+               '<h2>' + escapeHtml(item.title) + '</h2>' +
+               '<div class="content">' + formatContent(item.content) + '</div>' +
+             '</div>';
+    }).join('');
+  }
+
+  searchEl.addEventListener('input', renderSearch);
+  clearBtn.addEventListener('click', () => { searchEl.value = ''; searchEl.focus(); renderSearch(); });
+  chipsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.chip'); if (!btn) return;
+    activeFilter = btn.dataset.filter;
+    [...chipsEl.children].forEach(c => c.classList.toggle('active', c === btn));
+    renderSearch();
+  });
+
+  // ----- 토스트 -----
+  let toastTimer = null;
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+  }
+
+  // ===== 관리 모드 =====
+  const modeBtn    = document.getElementById('modeBtn');
+  const searchView = document.getElementById('searchView');
+  const adminView  = document.getElementById('adminView');
+  const pinGate    = document.getElementById('pinGate');
+  const adminPanel = document.getElementById('adminPanel');
+  const subtitle   = document.getElementById('subtitle');
+
+  let isAdmin   = false;   // 현재 관리 화면인지
+  let unlocked  = false;   // PIN 해제 여부 (세션 동안 유지)
+  let editIndex = -1;      // 수정 중인 항목 index (-1이면 신규)
+  let formType  = 'recipe';
+
+  function showSearch() {
+    isAdmin = false;
+    adminView.classList.add('hidden');
+    searchView.classList.remove('hidden');
+    modeBtn.textContent = '⚙️ 관리';
+    modeBtn.classList.remove('admin-on');
+    subtitle.innerHTML = '초성으로 검색하세요. 예) <b>ㅂㄴㄹ</b>(바닐라라떼), <b>ㅇㅅㅈ</b>(영수증)';
+    renderSearch();
+  }
+  function showAdmin() {
+    isAdmin = true;
+    searchView.classList.add('hidden');
+    adminView.classList.remove('hidden');
+    modeBtn.textContent = '🔍 검색으로';
+    modeBtn.classList.add('admin-on');
+    subtitle.textContent = '사장님 관리 모드 — 항목을 추가·수정·삭제할 수 있습니다.';
+    if (unlocked) { pinGate.classList.add('hidden'); adminPanel.classList.remove('hidden'); renderAdmin(); }
+    else { pinGate.classList.remove('hidden'); adminPanel.classList.add('hidden');
+           document.getElementById('pinInput').value = '';
+           document.getElementById('pinErr').textContent = '';
+           setTimeout(() => document.getElementById('pinInput').focus(), 50); }
+  }
+  modeBtn.addEventListener('click', () => { isAdmin ? showSearch() : showAdmin(); });
+
+  // ----- PIN -----
+  function tryUnlock() {
+    const errEl = document.getElementById('pinErr');
+    try {
+      const v = document.getElementById('pinInput').value.trim();
+      let pin;
+      try { pin = getPIN(); } catch (_) { pin = DEFAULT_PIN; }  // 최후 방어: 절대 여기서 죽지 않음
+      if (v === pin) {
+        unlocked = true; showAdmin();
+        if (pin === DEFAULT_PIN) toast('기본 PIN(0000)입니다. PIN 변경을 권장해요.');
+      } else {
+        errEl.textContent = 'PIN이 틀렸습니다.';
+        document.getElementById('pinInput').value = '';
+      }
+    } catch (err) {
+      // 어떤 이유로든 실패하면 조용히 죽지 말고 화면에 표시
+      errEl.textContent = '오류: ' + (err && err.message ? err.message : String(err));
+    }
+  }
+  document.getElementById('pinSubmit').addEventListener('click', tryUnlock);
+  document.getElementById('pinInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+
+  document.getElementById('pinChangeBtn').addEventListener('click', () => {
+    const cur = prompt('현재 PIN을 입력하세요.');
+    if (cur === null) return;
+    if (cur.trim() !== getPIN()) { toast('현재 PIN이 틀렸습니다.'); return; }
+    const np = prompt('새 PIN 4자리 숫자를 입력하세요.');
+    if (np === null) return;
+    if (!/^\d{4}$/.test(np.trim())) { toast('숫자 4자리로 입력하세요.'); return; }
+    setPIN(np.trim()); toast('✅ PIN이 변경되었습니다.');
+  });
+
+  // ----- 폼 -----
+  const fTitle   = document.getElementById('fTitle');
+  const fContent = document.getElementById('fContent');
+  const fAlias   = document.getElementById('fAlias');
+  const formTitleEl = document.getElementById('formTitle');
+
+  function setFormType(t) {
+    formType = t;
+    document.querySelectorAll('#typeToggle button').forEach(b => {
+      b.classList.remove('sel-recipe', 'sel-sos');
+      if (b.dataset.type === t) b.classList.add(t === 'sos' ? 'sel-sos' : 'sel-recipe');
+    });
+  }
+  document.getElementById('typeToggle').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (b) setFormType(b.dataset.type);
+  });
+
+  function resetForm() {
+    editIndex = -1;
+    formTitleEl.textContent = '➕ 새 항목 추가';
+    fTitle.value = ''; fContent.value = ''; fAlias.value = '';
+    setFormType('recipe');
+  }
+  function fillForm(i) {
+    const it = db[i];
+    editIndex = i;
+    formTitleEl.textContent = '✏️ 항목 수정';
+    fTitle.value = it.title; fContent.value = it.content; fAlias.value = it.alias || '';
+    setFormType(it.type === 'sos' ? 'sos' : 'recipe');
+    document.querySelector('.admin-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  document.getElementById('formCancel').addEventListener('click', resetForm);
+
+  document.getElementById('formSave').addEventListener('click', () => {
+    const title = fTitle.value.trim();
+    const content = fContent.value.trim();
+    if (!title)   { toast('제목을 입력하세요.'); fTitle.focus(); return; }
+    if (!content) { toast('내용을 입력하세요.'); fContent.focus(); return; }
+    const entry = { type: formType, title, content, alias: fAlias.value.trim() };
+    if (editIndex >= 0) { db[editIndex] = entry; toast('✏️ 수정되었습니다.'); }
+    else { db.unshift(entry); toast('✅ 추가되었습니다.'); }
+    saveDB(); resetForm(); renderAdmin();
+  });
+
+  // ----- 관리 목록 -----
+  const adminList = document.getElementById('adminList');
+  function renderAdmin() {
+    document.getElementById('itemCount').textContent = db.length;
+    if (db.length === 0) {
+      adminList.innerHTML = '<p class="note">아직 항목이 없습니다. 위 폼에서 추가하세요.</p>';
+      return;
+    }
+    adminList.innerHTML = db.map((it, i) => {
+      const cls = it.type === 'sos' ? 'sos' : 'recipe';
+      const tag = it.type === 'sos' ? '🚨 비상' : '☕ 레시피';
+      return '<div class="admin-item ' + cls + '">' +
+               '<div class="ai-main">' +
+                 '<div class="ai-title">' + escapeHtml(it.title) + '</div>' +
+                 '<div class="ai-sub">' + tag + (it.alias ? ' · 별칭: ' + escapeHtml(it.alias) : '') + '</div>' +
+               '</div>' +
+               '<div class="ai-btns">' +
+                 '<button class="icon-btn edit" data-edit="' + i + '" title="수정">✏️</button>' +
+                 '<button class="icon-btn del" data-del="' + i + '" title="삭제">🗑️</button>' +
+               '</div>' +
+             '</div>';
+    }).join('');
+  }
+  adminList.addEventListener('click', (e) => {
+    const ed = e.target.closest('[data-edit]');
+    const dl = e.target.closest('[data-del]');
+    if (ed) { fillForm(Number(ed.dataset.edit)); return; }
+    if (dl) {
+      const i = Number(dl.dataset.del);
+      if (confirm('"' + db[i].title + '"\n이 항목을 삭제할까요?')) {
+        db.splice(i, 1); saveDB();
+        if (editIndex === i) resetForm();
+        renderAdmin(); toast('🗑️ 삭제되었습니다.');
+      }
+    }
+  });
+
+  // ----- 백업 -----
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    const stamp = d.getFullYear() + ('0'+(d.getMonth()+1)).slice(-2) + ('0'+d.getDate()).slice(-2);
+    a.href = url; a.download = 'cafe-cheat-backup-' + stamp + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast('⬇️ 백업 파일을 내보냈습니다.');
+  });
+  document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change', (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!Array.isArray(data)) throw 0;
+        const ok = data.every(x => x && typeof x.title === 'string' && typeof x.content === 'string');
+        if (!ok) throw 0;
+        if (!confirm('백업 파일의 ' + data.length + '개 항목으로 교체합니다.\n지금 데이터는 사라집니다. 계속할까요?')) return;
+        db = data.map(x => ({ type: x.type === 'sos' ? 'sos' : 'recipe',
+                              title: String(x.title), content: String(x.content),
+                              alias: x.alias ? String(x.alias) : '' }));
+        saveDB(); resetForm(); renderAdmin(); toast('⬆️ 백업을 불러왔습니다.');
+      } catch (_) { toast('⚠️ 올바른 백업 파일이 아닙니다.'); }
+      finally { e.target.value = ''; }
+    };
+    reader.readAsText(file);
+  });
+
+  // ----- 초기화 -----
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    if (!confirm('모든 항목을 기본 샘플로 되돌립니다.\n직접 추가/수정한 내용은 사라집니다. 계속할까요?')) return;
+    db = JSON.parse(JSON.stringify(DEFAULT_DB));
+    saveDB(); resetForm(); renderAdmin(); toast('♻️ 기본값으로 초기화했습니다.');
+  });
+
+  // ----- 시작 -----
+  setFormType('recipe');
+  showSearch();
+
+
+  /* ---- 오프라인 앱(홈 화면에 추가): 외부 파일 없이 내장 ---- */
+  (function setupPWA() {
+    const manifest = {
+      name: "1초 레시피 & 비상 매뉴얼", short_name: "커닝페이퍼",
+      start_url: ".", display: "standalone",
+      background_color: "#1b1f2a", theme_color: "#1b1f2a",
+      icons: [{
+        src: "data:image/svg+xml," + encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512">' +
+          '<rect width="512" height="512" rx="96" fill="#1b1f2a"/>' +
+          '<text x="50%" y="58%" font-size="300" text-anchor="middle">☕</text></svg>'),
+        sizes: "512x512", type: "image/svg+xml"
+      }]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+    document.getElementById('manifest-holder').href = URL.createObjectURL(blob);
+
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      const swCode =
+        "self.addEventListener('install', e => self.skipWaiting());" +
+        "self.addEventListener('activate', e => self.clients.claim());" +
+        "self.addEventListener('fetch', e => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });";
+      try {
+        const swBlob = new Blob([swCode], { type: 'text/javascript' });
+        navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+      } catch (_) {}
+    }
+  })();
+  </script>
+</body>
+</html>
