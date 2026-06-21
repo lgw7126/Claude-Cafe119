@@ -1,5 +1,8 @@
 # ☕ 1초 레시피 & 비상 매뉴얼 (Cafe Quick-Cheat App)
 
+실행링크 file:///C:/Users/kikin/OneDrive/Desktop/Claude/Claude-code-test/index.html
+
+
 카페·샌드위치 가게 등 신입 알바생을 위한 **오프라인 단일 파일** 커닝페이퍼 웹앱입니다.
 서버·데이터베이스·외부 라이브러리 없이 `index.html` 파일 하나로 동작합니다.
 
